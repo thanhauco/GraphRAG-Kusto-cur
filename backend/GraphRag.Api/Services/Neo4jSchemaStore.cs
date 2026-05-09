@@ -96,7 +96,8 @@ public class Neo4jSchemaStore
                         """
                         MATCH (t:Table { fqn: $fqn })
                         MERGE (c:Column { id: $colId })
-                        SET c.name = $colName, c.data_type = $dtype, c.description = $desc
+                        SET c.name = $colName, c.data_type = $dtype, c.description = $desc,
+                            c.sample_distinct_estimate = $sampleEst
                         MERGE (t)-[:HAS_COLUMN]->(c)
                         """,
                         new
@@ -105,7 +106,8 @@ public class Neo4jSchemaStore
                             colId,
                             colName = c.Name,
                             dtype = c.DataType,
-                            desc = c.Description
+                            desc = c.Description,
+                            sampleEst = c.SampleDistinctEstimate
                         });
                 }
             }
@@ -166,7 +168,11 @@ public class Neo4jSchemaStore
                 UNWIND nodes AS x
                 WITH DISTINCT x
                 OPTIONAL MATCH (x)-[:HAS_COLUMN]->(c:Column)
-                WITH x, collect(CASE WHEN c IS NULL THEN null ELSE c.name + ':' + coalesce(c.data_type, '') END) AS raw
+                WITH x, collect(CASE WHEN c IS NULL THEN null ELSE
+                  c.name + ':' + coalesce(c.data_type, '') +
+                  CASE WHEN c.sample_distinct_estimate IS NULL THEN ''
+                  ELSE '~' + toString(c.sample_distinct_estimate) END
+                END) AS raw
                 WITH x, [p IN raw WHERE p IS NOT NULL] AS colpairs
                 RETURN x.name AS table, x.time_columns AS time_columns, x.folder AS folder, colpairs
                 """,
@@ -240,6 +246,59 @@ public class Neo4jSchemaStore
             }
 
             return scored.Select(s => s.name).ToList();
+        });
+    }
+
+    /// <summary>Neo4j-only snapshot for debugging (no Kusto cluster parameters).</summary>
+    public async Task<GraphInspectResponse?> InspectGraphAsync(string database, CancellationToken ct)
+    {
+        await using var driver = CreateDriver();
+        await using var session = driver.AsyncSession();
+
+        return await session.ExecuteReadAsync(async tx =>
+        {
+            var cursor = await tx.RunAsync(
+                """
+                MATCH (d:Database { name: $db })
+                OPTIONAL MATCH (d)-[:HAS_TABLE]->(t:Table)
+                OPTIONAL MATCH (t)-[:HAS_COLUMN]->(c:Column)
+                OPTIONAL MATCH (t)-[r:RELATES_TO]-(:Table)
+                RETURN d.schema_hash AS hash,
+                       count(DISTINCT t) AS tc,
+                       count(DISTINCT c) AS cc,
+                       count(DISTINCT r) AS rc
+                """,
+                new { db = database });
+
+            if (!await cursor.FetchAsync())
+                return null;
+
+            var record = cursor.Current;
+            string? hash = null;
+            try
+            {
+                hash = record["hash"].As<string?>();
+            }
+            catch
+            {
+                /* Property missing or wrong type */
+            }
+
+            var esc = database.Replace("\\", "\\\\").Replace("'", "\\'");
+            var examples = new[]
+            {
+                $"MATCH (d:Database {{ name: '{esc}' }})-[:HAS_TABLE]->(t:Table) RETURN d, t LIMIT 40",
+                $"MATCH (d:Database {{ name: '{esc}' }})-[:HAS_TABLE]->(t:Table)-[:HAS_COLUMN]->(c:Column) RETURN t.name, c.name, c.data_type LIMIT 80",
+                $"MATCH (d:Database {{ name: '{esc}' }})-[:HAS_TABLE]->(a:Table)-[r:RELATES_TO]-(b:Table) RETURN a.name, type(r), b.name, r.column LIMIT 80"
+            };
+
+            return new GraphInspectResponse(
+                database,
+                hash,
+                (int)record["tc"].As<long>(),
+                (int)record["cc"].As<long>(),
+                (int)record["rc"].As<long>(),
+                examples);
         });
     }
 

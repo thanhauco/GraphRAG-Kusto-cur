@@ -59,8 +59,14 @@ Set Kusto and Azure OpenAI via environment variables on the `backend` service (s
 ## Security notes
 
 - Kusto **client secrets** should not be checked in; use Key Vault or compose secrets for real environments.
+- Production-friendly auth: set `GraphRag:KustoUseManagedIdentity` to `true` for Azure managed identity (optional `GraphRag:KustoManagedIdentityClientId` for user-assigned).
 - `GraphRag:KustoClusterUriAllowlist` restricts cluster URIs accepted from the UI (SSRF mitigation).
 - Demo **safe mode** (`DemoSafeMode`: true) requires `take`/`limit` and a time bound in KQL.
+
+## Graph debugging & sampling
+
+- After sync, `GET /api/graph/inspect?database=...` returns counts, `schema_hash`, and sample Cypher snippets for Neo4j Browser.
+- Optional `GraphRag:SchemaSampleColumns` runs bounded `take N` samples per table during sync and stores `sample_distinct_estimate` on column nodes (see `SchemaSampleRowCap`).
 
 ## Neo4j Browser
 

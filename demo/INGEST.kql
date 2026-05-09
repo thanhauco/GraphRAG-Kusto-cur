@@ -1,0 +1,23 @@
+// Outline for loading synthetic IcM-style CSVs into Azure Data Explorer.
+// Replace DATABASE/TABLE names and blob/container URIs for your environment.
+
+.create-merge table Components (ComponentId: string, Name: string, OwnerTeam: string)
+
+.create-merge table Services (ServiceId: string, ServiceName: string, ComponentId: string)
+
+.create-merge table Incidents (IncidentId: string, ServiceId: string, Title: string, Severity: string, StartTime: datetime, EndTime: datetime)
+
+.create-merge table Alerts (AlertId: string, IncidentId: string, ServiceId: string, CorrelationId: string, FiredTime: datetime)
+
+.create-merge table Deployments (DeploymentId: string, ServiceId: string, Version: string, StartedAt: datetime)
+
+// Example external blob ingest (adjust paths):
+// .ingest into table Components ('https://<storage>.blob.core.windows.net/demo/components.csv;...') with (format='csv', ignoreFirstRecord=true)
+// .ingest into table Services (...)
+// .ingest into table Incidents (...)
+// .ingest into table Alerts (...)
+// .ingest into table Deployments (...)
+
+// Verify row counts:
+// Components | count
+// Services | count

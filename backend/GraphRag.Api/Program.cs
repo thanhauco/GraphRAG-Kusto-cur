@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using GraphRag.Api.Configuration;
+using GraphRag.Api.Middleware;
 using GraphRag.Api.Models;
 using GraphRag.Api.Security;
 using GraphRag.Api.Services;
@@ -7,6 +8,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var graphRag = new GraphRagOptions();
 builder.Configuration.GetSection(GraphRagOptions.SectionName).Bind(graphRag);
@@ -42,6 +46,7 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseCors("Ui");
 app.UseRateLimiter();
 
@@ -60,30 +65,23 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok", runtime = "dotne
     .WithName("ApiHealth");
 
 app.MapPost("/api/kusto/validate",
-        async Task<Results<Ok<KustoValidateResponse>, BadRequest<string>>> (
+        async Task<Ok<KustoValidateResponse>> (
             KustoValidateRequest body,
             KustoQueryService kusto,
             GraphRagOptions opt,
             CancellationToken ct) =>
         {
-            try
-            {
-                ValidateCluster(body.ClusterUri, opt);
-                var (ok, msg, ms, db) = await kusto.ValidateAsync(
-                    body.ClusterUri, body.Database, body.TenantId, body.ClientId, body.ClientSecret, ct);
-                return TypedResults.Ok(new KustoValidateResponse(ok, msg, ms, db));
-            }
-            catch (Exception ex)
-            {
-                return TypedResults.BadRequest(ex.Message);
-            }
+            ValidateCluster(body.ClusterUri, opt);
+            var (ok, msg, ms, db) = await kusto.ValidateAsync(
+                body.ClusterUri, body.Database, body.TenantId, body.ClientId, body.ClientSecret, ct);
+            return TypedResults.Ok(new KustoValidateResponse(ok, msg, ms, db));
         })
     .DisableAntiforgery();
 
 app.MapGet("/api/kusto/databases",
-        async Task<Results<Ok<IReadOnlyList<string>>, BadRequest<string>>> (
+        async Task<Ok<IReadOnlyList<string>>> (
             string cluster_uri,
-            string database,
+            string? database,
             string? tenant_id,
             string? client_id,
             string? client_secret,
@@ -91,23 +89,36 @@ app.MapGet("/api/kusto/databases",
             GraphRagOptions opt,
             CancellationToken ct) =>
         {
-            try
-            {
-                ValidateCluster(cluster_uri, opt);
-                var list = await kusto.ListDatabasesAsync(cluster_uri, database, tenant_id, client_id, client_secret, ct);
-                return TypedResults.Ok(list);
-            }
-            catch (Exception ex)
-            {
-                return TypedResults.BadRequest(ex.Message);
-            }
+            ValidateCluster(cluster_uri, opt);
+            var list = await kusto.ListDatabasesAsync(cluster_uri, database, tenant_id, client_id, client_secret, ct);
+            return TypedResults.Ok(list);
+        })
+    .DisableAntiforgery();
+
+app.MapGet("/api/kusto/databases/{database}/tables/{tableName}/columns",
+        async Task<Ok<IReadOnlyList<ColumnInfo>>> (
+            string database,
+            string tableName,
+            string cluster_uri,
+            string? tenant_id,
+            string? client_id,
+            string? client_secret,
+            KustoQueryService kusto,
+            GraphRagOptions opt,
+            CancellationToken ct) =>
+        {
+            ValidateCluster(cluster_uri, opt);
+            var cols = await kusto.GetTableColumnsAsync(
+                cluster_uri, database, tableName, tenant_id, client_id, client_secret, ct);
+            return TypedResults.Ok(cols);
         })
     .DisableAntiforgery();
 
 app.MapGet("/api/kusto/databases/{database}/tables",
-        async Task<Results<Ok<IReadOnlyList<TableInfo>>, BadRequest<string>>> (
+        async Task<Ok<IReadOnlyList<TableInfo>>> (
             string database,
             string cluster_uri,
+            bool? include_columns,
             string? tenant_id,
             string? client_id,
             string? client_secret,
@@ -115,94 +126,81 @@ app.MapGet("/api/kusto/databases/{database}/tables",
             GraphRagOptions opt,
             CancellationToken ct) =>
         {
-            try
+            ValidateCluster(cluster_uri, opt);
+            var tables = await kusto.ListTablesAsync(cluster_uri, database, tenant_id, client_id, client_secret, ct);
+            if (include_columns == false)
+                return TypedResults.Ok(tables);
+
+            var withCols = new List<TableInfo>();
+            foreach (var t in tables)
             {
-                ValidateCluster(cluster_uri, opt);
-                var tables = await kusto.ListTablesAsync(cluster_uri, database, tenant_id, client_id, client_secret, ct);
-                var withCols = new List<TableInfo>();
-                foreach (var t in tables)
-                {
-                    var cols = await kusto.GetTableColumnsAsync(
-                        cluster_uri, database, t.Name, tenant_id, client_id, client_secret, ct);
-                    var timeCols = SchemaRelationshipHeuristics.InferTimeColumns(cols);
-                    withCols.Add(new TableInfo(t.Name, t.Folder, t.DocString, cols, timeCols));
-                }
-                return TypedResults.Ok((IReadOnlyList<TableInfo>)withCols);
+                var cols = await kusto.GetTableColumnsAsync(
+                    cluster_uri, database, t.Name, tenant_id, client_id, client_secret, ct);
+                var timeCols = SchemaRelationshipHeuristics.InferTimeColumns(cols);
+                withCols.Add(new TableInfo(t.Name, t.Folder, t.DocString, cols, timeCols));
             }
-            catch (Exception ex)
-            {
-                return TypedResults.BadRequest(ex.Message);
-            }
+
+            return TypedResults.Ok((IReadOnlyList<TableInfo>)withCols);
         })
     .DisableAntiforgery();
 
 app.MapPost("/api/kusto/query",
-        async Task<Results<Ok<KustoExecuteResponse>, BadRequest<string>>> (
+        async Task<Ok<KustoExecuteResponse>> (
             KustoExecuteRequest body,
             KustoQueryService kusto,
             GraphRagOptions opt,
             CancellationToken ct) =>
         {
-            try
-            {
-                ValidateCluster(body.ClusterUri, opt);
-                var r = await kusto.ExecuteKqlAsync(
-                    body.ClusterUri,
-                    body.Database,
-                    body.Kql,
-                    body.TenantId,
-                    body.ClientId,
-                    body.ClientSecret,
-                    opt.DemoSafeMode,
-                    ct);
-                return TypedResults.Ok(r);
-            }
-            catch (Exception ex)
-            {
-                return TypedResults.BadRequest(ex.Message);
-            }
+            ValidateCluster(body.ClusterUri, opt);
+            var r = await kusto.ExecuteKqlAsync(
+                body.ClusterUri,
+                body.Database,
+                body.Kql,
+                body.TenantId,
+                body.ClientId,
+                body.ClientSecret,
+                opt.DemoSafeMode,
+                ct);
+            return TypedResults.Ok(r);
         })
     .RequireRateLimiting("kusto")
     .DisableAntiforgery();
 
 app.MapPost("/api/graph/sync-schema",
-        async Task<Results<Ok<GraphSyncResult>, BadRequest<string>>> (
+        async Task<Ok<GraphSyncResult>> (
             GraphSyncRequest body,
             SchemaSyncOrchestrator sync,
             GraphRagOptions opt,
             CancellationToken ct) =>
         {
-            try
-            {
-                ValidateCluster(body.ClusterUri, opt);
-                var result = await sync.SyncAsync(
-                    body.ClusterUri, body.Database, body.TenantId, body.ClientId, body.ClientSecret, ct);
-                return TypedResults.Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return TypedResults.BadRequest(ex.Message);
-            }
+            ValidateCluster(body.ClusterUri, opt);
+            var result = await sync.SyncAsync(
+                body.ClusterUri, body.Database, body.TenantId, body.ClientId, body.ClientSecret, ct);
+            return TypedResults.Ok(result);
         })
     .DisableAntiforgery();
 
+app.MapGet("/api/graph/inspect",
+        async Task<Results<Ok<GraphInspectResponse>, NotFound>> (
+            string database,
+            Neo4jSchemaStore neo,
+            CancellationToken ct) =>
+        {
+            var r = await neo.InspectGraphAsync(database, ct);
+            return r == null ? TypedResults.NotFound() : TypedResults.Ok(r);
+        })
+    .WithName("GraphInspect");
+
 app.MapPost("/api/rag/query",
-        async Task<Results<Ok<RagQueryResponse>, BadRequest<string>>> (
+        async Task<Ok<RagQueryResponse>> (
             RagQueryRequest body,
             GraphRagService rag,
             GraphRagOptions opt,
             CancellationToken ct) =>
         {
-            try
-            {
-                ValidateCluster(body.ClusterUri, opt);
-                var r = await rag.QueryAsync(body, ct);
-                return TypedResults.Ok(r);
-            }
-            catch (Exception ex)
-            {
-                return TypedResults.BadRequest(ex.Message);
-            }
+            ValidateCluster(body.ClusterUri, opt);
+            var r = await rag.QueryAsync(body, ct);
+            return TypedResults.Ok(r);
         })
     .RequireRateLimiting("kusto")
     .DisableAntiforgery();

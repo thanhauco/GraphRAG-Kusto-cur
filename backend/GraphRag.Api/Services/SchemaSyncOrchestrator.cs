@@ -1,4 +1,3 @@
-using System.Text.Json;
 using GraphRag.Api.Configuration;
 using GraphRag.Api.Models;
 
@@ -33,13 +32,37 @@ public class SchemaSyncOrchestrator
 
         foreach (var t in tables)
         {
-            var cols = await _kusto.GetTableColumnsAsync(clusterUri, database, t.Name, tenantId, clientId, clientSecret, ct);
+            var cols = await _kusto.GetTableColumnsAsync(clusterUri, database, t.Name, tenantId, clientId, clientSecret, ct)
+                .ConfigureAwait(false);
             var timeCols = SchemaRelationshipHeuristics.InferTimeColumns(cols);
-            tableColumnMap[t.Name] = cols.Select(c => c.Name).ToList();
-            enriched.Add(new TableInfo(t.Name, t.Folder, t.DocString, cols, timeCols));
+
+            IReadOnlyList<ColumnInfo> colsWithSamples = cols;
+            if (_options.SchemaSampleColumns && cols.Count > 0)
+            {
+                var cap = Math.Clamp(_options.SchemaSampleRowCap, 10, 500);
+                var estimates = await _kusto.EstimateDistinctFromSampleAsync(
+                        clusterUri,
+                        database,
+                        t.Name,
+                        cols.Select(c => c.Name).ToList(),
+                        tenantId,
+                        clientId,
+                        clientSecret,
+                        cap,
+                        ct)
+                    .ConfigureAwait(false);
+
+                colsWithSamples = cols
+                    .Select(c => new ColumnInfo(c.Name, c.DataType, c.Description,
+                        estimates.TryGetValue(c.Name, out var k) ? k : null))
+                    .ToList();
+            }
+
+            tableColumnMap[t.Name] = colsWithSamples.Select(c => c.Name).ToList();
+            enriched.Add(new TableInfo(t.Name, t.Folder, t.DocString, colsWithSamples, timeCols));
         }
 
         var edges = SchemaRelationshipHeuristics.InferEdges(tableColumnMap);
-        return await _neo.SyncSchemaAsync(database, enriched, tableColumnMap, edges, ct);
+        return await _neo.SyncSchemaAsync(database, enriched, tableColumnMap, edges, ct).ConfigureAwait(false);
     }
 }

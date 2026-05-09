@@ -12,6 +12,12 @@ public class GraphRagOptions
     public string KustoClientId { get; set; } = "";
     public string KustoClientSecret { get; set; } = "";
 
+    /// <summary>When true, use Azure managed identity for Kusto (system-assigned, or user-assigned via KustoManagedIdentityClientId).</summary>
+    public bool KustoUseManagedIdentity { get; set; }
+
+    /// <summary>Optional client id for user-assigned managed identity (ignored when empty).</summary>
+    public string KustoManagedIdentityClientId { get; set; } = "";
+
     /// <summary>URL prefixes allowed when the client supplies cluster_uri (SSRF mitigation).</summary>
     public string[] KustoClusterUriAllowlist { get; set; } = ["https://"];
 
@@ -29,4 +35,7 @@ public class GraphRagOptions
     public int MaxKqlResultRows { get; set; } = 5000;
     public int KustoQueryTimeoutSeconds { get; set; } = 60;
     public bool SchemaSampleColumns { get; set; }
+
+    /// <summary>Rows to scan per table when SchemaSampleColumns is enabled (distinct estimates are from this sample only).</summary>
+    public int SchemaSampleRowCap { get; set; } = 100;
 }

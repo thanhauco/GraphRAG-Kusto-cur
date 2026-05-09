@@ -1,0 +1,20 @@
+{
+  "description": "Manual / CI-light evaluation hints: after ingest and schema sync, subgraph retrieval should surface these tables.",
+  "cases": [
+    {
+      "id": "deploy_incident_hops",
+      "question": "Which deployments touched services that had open incidents in the last 7 days?",
+      "expect_tables_contains_any": ["Deployments", "Services", "Incidents"]
+    },
+    {
+      "id": "blast_radius",
+      "question": "What is the blast radius from component failures to incidents and alerts?",
+      "expect_tables_contains_any": ["Components", "Services", "Incidents", "Alerts"]
+    },
+    {
+      "id": "correlation",
+      "question": "List correlated alerts sharing the same correlation id in the last 48 hours.",
+      "expect_tables_contains_any": ["Alerts"]
+    }
+  ]
+}

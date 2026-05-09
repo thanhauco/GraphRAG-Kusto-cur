@@ -162,3 +162,59 @@ ul.tables li:hover {
   font-size: 0.8rem;
   color: #9aa7b8;
 }
+
+.cm-editor {
+  border-radius: 6px;
+  border: 1px solid #3d4f66;
+  overflow: hidden;
+}
+
+.cm-editor.cm-focused {
+  outline: 2px solid #4a7eb8;
+  outline-offset: 1px;
+}
+
+.demo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+
+.demo-chips button {
+  margin-top: 0;
+  font-size: 0.8rem;
+}
+
+.paired-card {
+  border: 1px solid #2d3a4d;
+  border-radius: 6px;
+  padding: 0.65rem;
+  margin-bottom: 0.5rem;
+  background: #141c28;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.row-actions button {
+  margin-top: 0;
+}
+
+.inline-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.inline-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0;
+}

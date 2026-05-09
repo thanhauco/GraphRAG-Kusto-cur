@@ -17,7 +17,13 @@ Synthetic CSVs model **Incidents**, **Alerts**, **Deployments**, **Services**, a
 1. Create a database and tables matching the CSV schemas (or use one [serialization](https://learn.microsoft.com/en-us/azure/data-explorer/create-table-wizard) from sample row).
 2. Ingest via queued ingest, `.ingest into table ...`, or Kusto Web UI ingestion.
 
-After ingest, use the app **Sync schema to graph**, then try the built-in NL samples from `GET /api/demo/samples`.
+After ingest, use the app **Sync schema to graph**, then try the built-in NL samples from `GET /api/demo/samples` (also surfaced in the UI).
+
+## Repeatable ingest & eval
+
+- **INGEST.kql** — outline `.create-merge` + `.ingest` commands for the CSV-shaped tables.
+- **eval-golden.json** — optional checks that NL questions should pull relevant table names after sync.
+- **DEMO_SCRIPT.md** — short stakeholder demo flow.
 
 ## Story for demos
 

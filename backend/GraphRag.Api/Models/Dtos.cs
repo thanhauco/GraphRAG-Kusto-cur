@@ -29,7 +29,11 @@ public record KustoExecuteResponse(
     bool Truncated,
     [property: JsonPropertyName("error_detail")] string? ErrorDetail);
 
-public record ColumnInfo(string Name, [property: JsonPropertyName("data_type")] string DataType = "", string Description = "");
+public record ColumnInfo(
+    string Name,
+    [property: JsonPropertyName("data_type")] string DataType = "",
+    string Description = "",
+    [property: JsonPropertyName("sample_distinct_estimate")] int? SampleDistinctEstimate = null);
 
 public record TableInfo(
     string Name,
@@ -72,4 +76,13 @@ public record RagQueryResponse(
     IReadOnlyList<string> Assumptions,
     [property: JsonPropertyName("graph_node_refs")] IReadOnlyList<string> GraphNodeRefs,
     [property: JsonPropertyName("execute_result")] KustoExecuteResponse? ExecuteResult,
-    [property: JsonPropertyName("retrieval_tables")] IReadOnlyList<string> RetrievalTables);
+    [property: JsonPropertyName("retrieval_tables")] IReadOnlyList<string> RetrievalTables,
+    [property: JsonPropertyName("retrieval_source")] string RetrievalSource = "neo4j_keywords");
+
+public record GraphInspectResponse(
+    string Database,
+    [property: JsonPropertyName("schema_hash")] string? SchemaHash,
+    [property: JsonPropertyName("table_count")] int TableCount,
+    [property: JsonPropertyName("column_count")] int ColumnCount,
+    [property: JsonPropertyName("relationship_count")] int RelationshipCount,
+    [property: JsonPropertyName("example_cypher")] IReadOnlyList<string> ExampleCypher);

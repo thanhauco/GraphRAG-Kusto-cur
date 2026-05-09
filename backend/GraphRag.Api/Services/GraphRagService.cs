@@ -14,12 +14,18 @@ public class GraphRagService
     private readonly GraphRagOptions _options;
     private readonly Neo4jSchemaStore _neo;
     private readonly KustoQueryService _kusto;
+    private readonly ILogger<GraphRagService> _logger;
 
-    public GraphRagService(GraphRagOptions options, Neo4jSchemaStore neo, KustoQueryService kusto)
+    public GraphRagService(
+        GraphRagOptions options,
+        Neo4jSchemaStore neo,
+        KustoQueryService kusto,
+        ILogger<GraphRagService> logger)
     {
         _options = options;
         _neo = neo;
         _kusto = kusto;
+        _logger = logger;
     }
 
     public async Task<RagQueryResponse> QueryAsync(RagQueryRequest req, CancellationToken ct)
@@ -27,8 +33,33 @@ public class GraphRagService
         if (string.IsNullOrWhiteSpace(_options.AzureOpenAiEndpoint) || string.IsNullOrWhiteSpace(_options.AzureOpenAiApiKey))
             throw new InvalidOperationException("Azure OpenAI is not configured (GraphRag:AzureOpenAiEndpoint / AzureOpenAiApiKey).");
 
-        var seeds = await _neo.MatchTablesByKeywordsAsync(req.Database, req.Question, ct);
-        var contextJson = await _neo.BuildContextSubgraphAsync(req.Database, seeds, ct);
+        var retrievalSource = "neo4j_keywords";
+        var seeds = await _neo.MatchTablesByKeywordsAsync(req.Database, req.Question, ct).ConfigureAwait(false);
+
+        if (seeds.Count == 0)
+        {
+            _logger.LogWarning("GraphRAG Neo4j keyword retrieval returned no tables; falling back to Kusto table catalog.");
+            retrievalSource = "kusto_table_catalog";
+            try
+            {
+                var tables = await _kusto
+                    .ListTablesAsync(req.ClusterUri, req.Database, req.TenantId, req.ClientId, req.ClientSecret, ct)
+                    .ConfigureAwait(false);
+                seeds = tables.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).Take(14).Select(t => t.Name).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Kusto fallback table listing failed.");
+                throw new InvalidOperationException($"GraphRAG retrieval failed (Neo4j empty and Kusto fallback error): {ex.Message}", ex);
+            }
+        }
+
+        var contextJson = await _neo.BuildContextSubgraphAsync(req.Database, seeds, ct).ConfigureAwait(false);
+        _logger.LogInformation(
+            "GraphRAG retrieval: source={Source}, seed_tables={SeedCount}, context_chars={Chars}",
+            retrievalSource,
+            seeds.Count,
+            contextJson.Length);
 
         var client = new AzureOpenAIClient(new Uri(_options.AzureOpenAiEndpoint), new AzureKeyCredential(_options.AzureOpenAiApiKey));
         var chat = client.GetChatClient(_options.AzureOpenAiDeploymentName);
@@ -105,7 +136,8 @@ public class GraphRagService
             assumptions,
             refs,
             exec,
-            seeds);
+            seeds,
+            retrievalSource);
     }
 
     private sealed class RagLlmJson
