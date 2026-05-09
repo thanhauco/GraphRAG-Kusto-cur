@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
+
+# Node
+node_modules/
+frontend/dist/
+*.local
+*.tsbuildinfo
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Env
+.env
+.env.local
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db

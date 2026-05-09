@@ -1,0 +1,4 @@
+AlertId,CorrelationId,ServiceId,AlertType,FiredTime,Severity
+alt-9001,corr-xyz-1,svc-100,Latency,2026-03-20T10:10:00Z,Sev2
+alt-9002,corr-xyz-1,svc-100,Errors,2026-03-20T10:12:00Z,Sev2
+alt-9003,corr-abc-2,svc-101,Availability,2026-03-21T07:55:00Z,Sev3

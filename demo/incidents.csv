@@ -1,0 +1,3 @@
+IncidentId,Title,Severity,ServiceId,ComponentId,CreatedTime,LastUpdateTime,Status
+inc-5001,Checkout timeouts,2,svc-100,cmp-api,2026-03-20T10:15:00Z,2026-03-20T11:00:00Z,Active
+inc-5002,Auth token failures,3,svc-101,cmp-auth,2026-03-21T08:00:00Z,2026-03-21T09:30:00Z,Mitigated

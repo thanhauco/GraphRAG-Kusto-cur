@@ -1,0 +1,4 @@
+ServiceId,ServiceName,ComponentId,Environment
+svc-100,AuctionService,cmp-api,prod
+svc-101,IdentityService,cmp-auth,prod
+svc-102,OrdersService,cmp-store,prod

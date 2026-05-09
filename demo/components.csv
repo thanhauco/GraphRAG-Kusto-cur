@@ -1,0 +1,4 @@
+ComponentId,ComponentName,Team,Region
+cmp-auth,AuthCore,SRE-East,EastUS
+cmp-api,CheckoutAPI,SRE-West,WestUS
+cmp-store,OrderStore,DataPlatform,CentralUS

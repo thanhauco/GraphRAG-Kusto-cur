@@ -1,0 +1,43 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/graphrag-demo-pass
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+    volumes:
+      - neo4j_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      GraphRag__Neo4jUri: bolt://neo4j:7687
+      GraphRag__Neo4jUser: neo4j
+      GraphRag__Neo4jPassword: graphrag-demo-pass
+      GraphRag__CorsOrigins__0: "http://localhost:5173"
+      GraphRag__CorsOrigins__1: "http://127.0.0.1:5173"
+      GraphRag__CorsOrigins__2: "http://localhost:8080"
+      GraphRag__CorsOrigins__3: "http://127.0.0.1:8080"
+      GraphRag__KustoClusterUriAllowlist__0: "https://"
+    depends_on:
+      - neo4j
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  neo4j_data: {}

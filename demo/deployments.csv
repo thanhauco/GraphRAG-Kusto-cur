@@ -1,0 +1,3 @@
+DeploymentId,ServiceId,BuildId,DeployedAt,ChangedBy
+dep-7001,svc-100,build-4001,2026-03-20T09:40:00Z,release-bot
+dep-7002,svc-102,build-4002,2026-03-19T18:20:00Z,release-bot

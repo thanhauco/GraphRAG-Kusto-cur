@@ -1,0 +1,164 @@
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+  color: #e8eaed;
+  background: #0f1419;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: #7cb7ff;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+h1 {
+  font-weight: 600;
+  margin-top: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.panel {
+  background: #1a2332;
+  border: 1px solid #2d3a4d;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+  color: #9aa7b8;
+}
+
+input,
+textarea,
+button,
+select {
+  font: inherit;
+  color: #e8eaed;
+  background: #0f1419;
+  border: 1px solid #3d4f66;
+  border-radius: 6px;
+  padding: 0.4rem 0.55rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+textarea {
+  min-height: 120px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+button {
+  cursor: pointer;
+  width: auto;
+  margin-top: 0.5rem;
+  margin-right: 0.5rem;
+  background: #2f5f8f;
+  border-color: #4a7eb8;
+}
+
+button.secondary {
+  background: #2d3a4d;
+  border-color: #4a5a70;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.banner {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.banner.ok {
+  background: #1b3d2a;
+  border: 1px solid #2d6a45;
+}
+
+.banner.err {
+  background: #3d1b1b;
+  border: 1px solid #6a2d2d;
+}
+
+.table-wrap {
+  overflow: auto;
+  max-height: 320px;
+  border: 1px solid #2d3a4d;
+  border-radius: 6px;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  width: 100%;
+}
+
+th,
+td {
+  border: 1px solid #2d3a4d;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+th {
+  background: #243044;
+  position: sticky;
+  top: 0;
+}
+
+ul.tables {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 280px;
+  overflow: auto;
+}
+
+ul.tables li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #2d3a4d;
+  cursor: pointer;
+}
+
+ul.tables li:hover {
+  color: #7cb7ff;
+}
+
+.small {
+  font-size: 0.8rem;
+  color: #9aa7b8;
+}
